@@ -1,17 +1,19 @@
 'use strict';
 
-let React;
-let ReactDOM;
-let ReactTestUtils;
-
 describe('useState hook', () => {
   // ???
   let containerForReactComponent = null;
+  let React;
+  let ReactDOM;
+  let ReactDOMClient;
+  let ReactTestUtils;
 
   beforeEach(() => {
     jest.resetModules(); // ???
+
     React = require('react');
     ReactDOM = require('react-dom');
+    ReactDOMClient = require('react-dom/client');
     ReactTestUtils = require('react-dom/test-utils');
 
     containerForReactComponent = document.createElement('div');
@@ -23,6 +25,18 @@ describe('useState hook', () => {
     containerForReactComponent = null;
   });
 
+  function renderIt(reactElem) {
+    ReactTestUtils.act(() => {
+      const root = ReactDOMClient.createRoot(containerForReactComponent);
+      root.render(reactElem);
+    });
+  }
+
+  function renderIt2(reactElem) {
+    const root = ReactDOMClient.createRoot(containerForReactComponent);
+    root.render(reactElem);
+  }
+
   it('mount', () => {
     function App() {
       console.log('=== App ===');
@@ -32,14 +46,7 @@ describe('useState hook', () => {
         <span>{count}</span>
       );
     }
-
-    console.log('=== START INITIAL RENDER ===');
-
-    ReactTestUtils.act(() => {
-      ReactDOM.render(<App />, containerForReactComponent);
-    });
-    
-    console.log('=== DONE INITIAL RENDER ===');
+    renderIt(<App />);
   });
 
   it('update', () => {
@@ -60,18 +67,14 @@ describe('useState hook', () => {
       );
     }
 
-    let __log = console.log;
-    console.log = () => { };
-
-    ReactTestUtils.act(() => {
-      ReactDOM.render(<App />, container);
-    });
-
-    console.log = __log;
+    // let __log = console.log;
+    // console.log = () => { };
+    renderIt(<App />);
+    // console.log = __log;
     console.log('=== UPDATE ===');
 
     ReactTestUtils.act(() => {
-      container
+      containerForReactComponent
         .querySelector('button')
         .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });

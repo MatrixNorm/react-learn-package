@@ -107,7 +107,7 @@ export const fiberTreeToXML3Y: Fiber => string = fiberTreeToXMLWithGenerator(ite
 // }
 
 export const getStackTrace = (depth: number): string => {
-  let obj = {};
+  let obj = {stack: ''};
   Error.captureStackTrace(obj, getStackTrace);
   let stackStr = obj.stack
     .split('\n')
@@ -120,3 +120,7 @@ export const getStackTrace = (depth: number): string => {
 
   return '\n\n' + stackStr;
 };
+
+export function dedent(str: string): string {
+  return str.replace(/  +/gm, '');
+}

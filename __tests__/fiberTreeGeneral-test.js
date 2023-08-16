@@ -2,7 +2,6 @@
 
 let React;
 let ReactDOM;
-let ReactDOMClient
 let ReactTestUtils;
 
 describe('fiber tree general', () => {
@@ -10,10 +9,9 @@ describe('fiber tree general', () => {
 
   beforeEach(() => {
     jest.resetModules(); // ???
+    
     React = require('react');
     ReactDOM = require('react-dom');
-    // TODO
-    ReactDOMClient = require('react-dom/client');
     ReactTestUtils = require('react-dom/test-utils');
 
     containerForReactComponent = document.createElement('div');
