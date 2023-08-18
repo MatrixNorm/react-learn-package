@@ -32,9 +32,13 @@ describe('useState hook', () => {
     });
   }
 
-  function renderIt2(reactElem) {
+  function renderIt_noact(reactElem) {
     const root = ReactDOMClient.createRoot(containerForReactComponent);
     root.render(reactElem);
+  }
+
+  function renderIt_noact_legacy(reactElem) {
+      ReactDOM.render(reactElem, containerForReactComponent);
   }
 
   it('mount', () => {
@@ -47,6 +51,30 @@ describe('useState hook', () => {
       );
     }
     renderIt(<App />);
+  });
+
+  it('mount_noact', () => {
+    function App() {
+      console.log('=== App ===');
+      const [count, setCount] = React.useState(0);
+
+      return (
+        <span>{count}</span>
+      );
+    }
+    renderIt_noact(<App />);
+  });
+
+  it('mount_noact_legacy', () => {
+    function App() {
+      console.log('=== App ===');
+      const [count, setCount] = React.useState(0);
+
+      return (
+        <span>{count}</span>
+      );
+    }
+    renderIt_noact_legacy(<App />);
   });
 
   it('update', () => {
