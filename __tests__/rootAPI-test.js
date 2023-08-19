@@ -8,6 +8,8 @@ describe('root API', () => {
   let ReactDOMClient;
   let ReactTestUtils;
 
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+
   beforeEach(() => {
     jest.resetModules(); // ???
 
@@ -39,6 +41,15 @@ describe('root API', () => {
       const root = ReactDOMClient.createRoot(containerForReactComponent);
       root.render(<App/>);
     });
+    /**
+     * ReactFiberAct.js###isConcurrentActEnvironment:
+     * console.error(
+     *   'The current testing environment is not configured to support ' +
+     *     'act(...)',
+     * );
+     * https://github.com/reactwg/react-18/discussions/102
+     *
+     */
   });
 
   it('new_noact', () => {
