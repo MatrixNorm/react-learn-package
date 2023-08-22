@@ -8,8 +8,6 @@ describe('root API', () => {
   let ReactDOMClient;
   let ReactTestUtils;
 
-  global.IS_REACT_ACT_ENVIRONMENT = true;
-
   beforeEach(() => {
     jest.resetModules(); // ???
 
@@ -20,6 +18,8 @@ describe('root API', () => {
 
     containerForReactComponent = document.createElement('div');
     document.body.appendChild(containerForReactComponent);
+
+    global.IS_REACT_ACT_ENVIRONMENT = true;
   });
 
   afterEach(() => {
@@ -53,9 +53,11 @@ describe('root API', () => {
   });
 
   it('new_noact', () => {
-      const root = ReactDOMClient.createRoot(containerForReactComponent);
-      root.render(<App/>);
-      console.log(document.body.innerHTML)
+    global.IS_REACT_ACT_ENVIRONMENT = false;
+
+    const root = ReactDOMClient.createRoot(containerForReactComponent);
+    root.render(<App/>);
+    console.log(document.body.innerHTML)
   });
 
   it('old_act', () => {
