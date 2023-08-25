@@ -100,3 +100,11 @@ To fix this, set globalThis.IS_REACT_ACT_ENVIRONMENT to true before running your
 // In your test setup file
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 ```
+
+## in tests module Scheduler is replaced with SchedulerMock
+
+Look at file `scripts/jest/setupHostConfig.js`:
+
+```javascript
+jest.mock('scheduler', () => jest.requireActual('scheduler/unstable_mock'));
+```
