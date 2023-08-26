@@ -112,8 +112,9 @@ export const getStackTrace = (depth: number): string => {
   let stackStr = obj.stack
     .split('\n')
     .slice(1, depth + 1)
-    .map(frame => {
-      return frame.trim().slice(3).replace('/home/ubuntu/projects/react-fork/packages/', '');
+    .map((frame, j) => {
+      let num = j + ' ';
+      return num + frame.trim().slice(3).replace('/home/ubuntu/projects/react-fork/packages/', '');
     })
     // .map(({functionName, fileName}) => `${functionName}:: ${fileName}`)
     .join('\n');

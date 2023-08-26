@@ -59,8 +59,10 @@ describe('root API', () => {
 
     const root = ReactDOMClient.createRoot(containerForReactComponent);
     root.render(<App/>);
-    await new Promise(process.nextTick);
-    SchedulerMock.unstable_flushNumberOfYields(1)
+    // wait for processRootScheduleInMicrotask to be called
+    console.log("BEFORE: await new Promise(queueMicrotask)")
+    await new Promise(queueMicrotask);
+    //SchedulerMock.unstable_flushNumberOfYields(1)
     console.log(document.body.innerHTML)
   });
 
