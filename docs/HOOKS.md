@@ -123,6 +123,53 @@ export function renderWithHooks<Props, SecondArg>(
 
   return children;
 }
+
+// SIMPLIFIED
+
+export function renderWithHooks<Props, SecondArg>(
+  current: Fiber | null,
+  workInProgress: Fiber,
+  Component: (p: Props, arg: SecondArg) => any,
+  props: Props,
+  secondArg: SecondArg,
+  nextRenderLanes: Lanes,
+): any {
+  renderLanes = nextRenderLanes;
+  currentlyRenderingFiber = workInProgress;
+
+  workInProgress.memoizedState = null;
+  workInProgress.updateQueue = null;
+  workInProgress.lanes = NoLanes;
+
+  // The following should have already been reset
+  // currentHook = null;
+  // workInProgressHook = null;
+  // didScheduleRenderPhaseUpdate = false;
+  // localIdCounter = 0;
+  // thenableIndexCounter = 0;
+  // thenableState = null;
+
+  ReactCurrentDispatcher.current =
+      current === null || current.memoizedState === null
+        ? HooksDispatcherOnMount
+        : HooksDispatcherOnUpdate;
+
+  let children = Component(props, secondArg);
+  // Check if there was a render phase update
+  if (didScheduleRenderPhaseUpdateDuringThisPass) {
+    // Keep rendering until the component stabilizes (there are no more render
+    // phase updates).
+    children = renderWithHooksAgain(
+      workInProgress,
+      Component,
+      props,
+      secondArg,
+    );
+  }
+
+  finishRenderingHooks(current, workInProgress);
+  return children;
+}
 ```
 
 ```javascript

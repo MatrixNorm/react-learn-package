@@ -2,48 +2,50 @@
 
 ```javascript
 
+// ReactCurrentDispatcher.current is selected in renderWithHooks function
+
 const HooksDispatcherOnMount: Dispatcher = {
   useEffect: mountEffect,
   useState: mountState,
   ...
 };
 
+const HooksDispatcherOnUpdate: Dispatcher = {
+  useEffect: updateEffect,
+  useState: updateState,
+  ...
+};
+
 type BasicStateAction<S> = (S => S) | S;
 type Dispatch<A> = A => void;
+type Hook = {
+  memoizedState: any,
+  baseState: any,
+  baseQueue: Update<any, any> | null,
+  queue: any,
+  next: Hook | null,
+};
+
+// const [count, setCount] = React.useState(0)
+// >>> (ReactCurrentDispatcher) >>>
+// const [count, setCount] = mountState(0);
 
 function mountState<S>(
   initialState: (() => S) | S,
 ): [S, Dispatch<BasicStateAction<S>>] {
   const hook = mountStateImpl(initialState);
   const queue = hook.queue;
-  const dispatch: Dispatch<BasicStateAction<S>> = (dispatchSetState.bind(
-    null,
-    currentlyRenderingFiber,
-    queue,
-  ): any);
+  const dispatch: Dispatch<BasicStateAction<S>> = dispatchSetState.bind(
+    null,                    // this
+    currentlyRenderingFiber, // fiber
+    queue,                   // queue
+  );
   queue.dispatch = dispatch;
   return [hook.memoizedState, dispatch];
 }
 
-export type Update<S, A> = {
-  lane: Lane,
-  revertLane: Lane,
-  action: A,
-  hasEagerState: boolean,
-  eagerState: S | null,
-  next: Update<S, A>,
-};
-
-export type UpdateQueue<S, A> = {
-  pending: Update<S, A> | null,
-  lanes: Lanes,
-  dispatch: (A => mixed) | null,
-  lastRenderedReducer: ((S, A) => S) | null,
-  lastRenderedState: S | null,
-};
-
 function mountStateImpl<S>(initialState: (() => S) | S): Hook {
-  const hook = mountWorkInProgressHook();
+  const hook = mountWorkInProgressHook(); // attaches hook to fiber
   if (typeof initialState === 'function') {
     initialState = initialState();
   }
@@ -58,6 +60,23 @@ function mountStateImpl<S>(initialState: (() => S) | S): Hook {
   hook.queue = queue;
   return hook;
 }
+
+type UpdateQueue<S, A> = {
+  pending: Update<S, A> | null,
+  lanes: Lanes,
+  dispatch: (A => mixed) | null,
+  lastRenderedReducer: ((S, A) => S) | null,
+  lastRenderedState: S | null,
+};
+
+type Update<S, A> = {
+  lane: Lane,
+  revertLane: Lane,
+  action: A,
+  hasEagerState: boolean,
+  eagerState: S | null,
+  next: Update<S, A>,
+};
 
 function basicStateReducer<S>(state: S, action: BasicStateAction<S>): S {
   return typeof action === 'function' ? action(state) : action;
@@ -92,7 +111,7 @@ function dispatchSetState<S, A>(
   queue: UpdateQueue<S, A>,
   action: A,
 ): void {
-  const lane = requestUpdateLane(fiber);
+  const lane = requestUpdateLane(fiber); // ???
 
   const update: Update<S, A> = {
     lane,
@@ -103,7 +122,7 @@ function dispatchSetState<S, A>(
     next: (null: any),
   };
 
-  if (isRenderPhaseUpdate(fiber)) {
+  if (isRenderPhaseUpdate(fiber)) { // ???
     enqueueRenderPhaseUpdate(queue, update);
   } else {
     // >>> OPTIMISATION
@@ -152,7 +171,7 @@ function dispatchSetState<S, A>(
   markUpdateInDevTools(fiber, lane, action);
 }
 
-// WITH OPTIMISATION REMOVED
+// OR WITHOUT OPTIMISATION CODE
 
 function dispatchSetState<S, A>(
   fiber: Fiber,
