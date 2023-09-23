@@ -64,12 +64,8 @@ describe('useState hook', () => {
       );
     }
 
-    // let __log = console.log;
-    // console.log = () => { };
     renderIt(<App />);
-    // console.log = __log;
     console.log('=== /// === UPDATE === /// ===');
-
     ReactTestUtils.act(() => {
       containerForReactComponent
         .querySelector('button')

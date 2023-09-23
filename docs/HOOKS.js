@@ -1,5 +1,4 @@
 
-```javascript
 /*
   ReactFiberHooks.js
 */
@@ -14,12 +13,6 @@ let currentlyRenderingFiber: Fiber = (null: any);
 // work-in-progress fiber.
 let currentHook: Hook | null = null;
 let workInProgressHook: Hook | null = null;
-```
-
-```javascript
-/*
-  ReactFiberHooks.js
-*/
 
 export function renderWithHooks<Props, SecondArg>(
   current: Fiber | null,
@@ -36,53 +29,19 @@ export function renderWithHooks<Props, SecondArg>(
   workInProgress.updateQueue = null;
   workInProgress.lanes = NoLanes;
 
-  // The following should have already been reset
+  // The following should have already been reset:
   // currentHook = null;
   // workInProgressHook = null;
-
   // didScheduleRenderPhaseUpdate = false;
   // localIdCounter = 0;
   // thenableIndexCounter = 0;
   // thenableState = null;
 
-  // TODO Warn if no hooks are used at all during mount, then some are used during update.
-  // Currently we will identify the update render as a mount because memoizedState === null.
-  // This is tricky because it's valid for certain types of components (e.g. React.lazy)
-
-  // Using memoizedState to differentiate between mount/update only works if at least one stateful hook is used.
-  // Non-stateful hooks (e.g. context) don't get added to memoizedState,
-  // so memoizedState would be null during updates and mounts.
   ReactCurrentDispatcher.current =
       current === null || current.memoizedState === null
         ? HooksDispatcherOnMount
         : HooksDispatcherOnUpdate;
 
-  // In Strict Mode, during development, user functions are double invoked to
-  // help detect side effects. The logic for how this is implemented for in
-  // hook components is a bit complex so let's break it down.
-  //
-  // We will invoke the entire component function twice. However, during the
-  // second invocation of the component, the hook state from the first
-  // invocation will be reused. That means things like `useMemo` functions won't
-  // run again, because the deps will match and the memoized result will
-  // be reused.
-  //
-  // We want memoized functions to run twice, too, so account for this, user
-  // functions are double invoked during the *first* invocation of the component
-  // function, and are *not* double invoked during the second incovation:
-  //
-  // - First execution of component function: user functions are double invoked
-  // - Second execution of component function (in Strict Mode, during
-  //   development): user functions are not double invoked.
-  //
-  // This is intentional for a few reasons; most importantly, it's because of
-  // how `use` works when something suspends: it reuses the promise that was
-  // passed during the first attempt. This is itself a form of memoization.
-  // We need to be able to memoize the reactive inputs to the `use` call using
-  // a hook (i.e. `useMemo`), which means, the reactive inputs to `use` must
-  // come from the same component invocation as the output.
-  //
-  // There are plenty of tests to ensure this behavior is correct.
   const shouldDoubleRenderDEV =
     __DEV__ &&
     debugRenderPhaseSideEffectsForStrictMode &&
@@ -92,10 +51,7 @@ export function renderWithHooks<Props, SecondArg>(
   let children = Component(props, secondArg);
   shouldDoubleInvokeUserFnsInHooksDEV = false;
 
-  // Check if there was a render phase update
   if (didScheduleRenderPhaseUpdateDuringThisPass) {
-    // Keep rendering until the component stabilizes (there are no more render
-    // phase updates).
     children = renderWithHooksAgain(
       workInProgress,
       Component,
@@ -124,9 +80,9 @@ export function renderWithHooks<Props, SecondArg>(
   return children;
 }
 
-// SIMPLIFIED
+// WITHOUT DOUBLE RENDER IN DEVELOPMENT
 
-export function renderWithHooks<Props, SecondArg>(
+export function renderWithHooksSimplified<Props, SecondArg>(
   current: Fiber | null,
   workInProgress: Fiber,
   Component: (p: Props, arg: SecondArg) => any,
@@ -141,24 +97,14 @@ export function renderWithHooks<Props, SecondArg>(
   workInProgress.updateQueue = null;
   workInProgress.lanes = NoLanes;
 
-  // The following should have already been reset
-  // currentHook = null;
-  // workInProgressHook = null;
-  // didScheduleRenderPhaseUpdate = false;
-  // localIdCounter = 0;
-  // thenableIndexCounter = 0;
-  // thenableState = null;
-
   ReactCurrentDispatcher.current =
       current === null || current.memoizedState === null
         ? HooksDispatcherOnMount
         : HooksDispatcherOnUpdate;
 
   let children = Component(props, secondArg);
-  // Check if there was a render phase update
+
   if (didScheduleRenderPhaseUpdateDuringThisPass) {
-    // Keep rendering until the component stabilizes (there are no more render
-    // phase updates).
     children = renderWithHooksAgain(
       workInProgress,
       Component,
@@ -170,16 +116,8 @@ export function renderWithHooks<Props, SecondArg>(
   finishRenderingHooks(current, workInProgress);
   return children;
 }
-```
-
-```javascript
-/*
-  ReactFiberHooks.js
-*/
 
 function finishRenderingHooks(current: Fiber | null, workInProgress: Fiber) {
-  // We can assume the previous dispatcher is always this one, since we set it
-  // at the beginning of the render phase and there's no re-entrance.
   ReactCurrentDispatcher.current = ContextOnlyDispatcher;
   // This check uses currentHook so that it works the same in DEV and prod bundles.
   // hookTypesDev could catch more cases (e.g. context) but only in DEV bundles.
@@ -227,12 +165,6 @@ function finishRenderingHooks(current: Fiber | null, workInProgress: Fiber) {
     }
   }
 }
-```
-
-```javascript
-/*
-  ReactFiberHooks.js
-*/
 
 function renderWithHooksAgain<Props, SecondArg>(
   workInProgress: Fiber,
@@ -285,4 +217,96 @@ function renderWithHooksAgain<Props, SecondArg>(
   } while (didScheduleRenderPhaseUpdateDuringThisPass);
   return children;
 }
-```
+
+
+// mount:rerender //
+// current == null
+// currentlyRenderingFiber.memoizedState == <first hook>
+function updateWorkInProgressHook_mount_rerender(): Hook {
+  if (workInProgressHook === null) {
+    // first hook
+    workInProgressHook = currentlyRenderingFiber.memoizedState;
+  } else {
+    // n-th hook
+    workInProgressHook = workInProgressHook.next;
+  }
+  return workInProgressHook;
+}
+
+// update:first_render:first_hook //
+// current != null
+// currentlyRenderingFiber == workInProgress == current.alt
+// currentlyRenderingFiber.memoizedState == null
+// currentHook == null
+// workInProgressHook == null
+function updateWorkInProgressHook_update_firstRender_firstHook(): Hook {
+  const current = currentlyRenderingFiber.alternate;
+  let nextCurrentHook = current.memoizedState;
+
+  if (nextCurrentHook === null) {
+    const currentFiber = currentlyRenderingFiber.alternate;
+    if (currentFiber === null) {
+      // This is the initial render. This branch is reached when the component
+      // suspends, resumes, then renders an additional hook.
+      // Should never be reached because we should switch to the mount dispatcher first.
+      throw new Error(
+        'Update hook called on initial render. This is likely a bug in React. Please file an issue.',
+      );
+    } else {
+      // This is an update. We should always have a current hook.
+      throw new Error('Rendered more hooks than during the previous render.');
+    }
+  }
+
+  currentHook = nextCurrentHook;
+
+  const newHook: Hook = {
+    memoizedState: currentHook.memoizedState,
+    baseState: currentHook.baseState,
+    baseQueue: currentHook.baseQueue,
+    queue: currentHook.queue,
+    next: null,
+  };
+  currentlyRenderingFiber.memoizedState = workInProgressHook = newHook;
+  return workInProgressHook;
+}
+
+// update:first_render:nth_hook //
+// current != null
+// currentlyRenderingFiber == workInProgress == current.alt
+// workInProgressHook = currentlyRenderingFiber.memoizedState != null
+// currentHook != null
+function updateWorkInProgressHook_update_firstRender_nthHook(): Hook {
+  let nextCurrentHook = currentHook.next;
+  let nextWorkInProgressHook = workInProgressHook.next;
+
+  if (nextCurrentHook === null) {
+    const currentFiber = currentlyRenderingFiber.alternate;
+    if (currentFiber === null) {
+      // This is the initial render. This branch is reached when the component
+      // suspends, resumes, then renders an additional hook.
+      // Should never be reached because we should switch to the mount dispatcher first.
+      throw new Error(
+        'Update hook called on initial render. This is likely a bug in React. Please file an issue.',
+      );
+    } else {
+      // This is an update. We should always have a current hook.
+      throw new Error('Rendered more hooks than during the previous render.');
+    }
+  }
+
+  currentHook = nextCurrentHook;
+
+  const newHook: Hook = {
+    memoizedState: currentHook.memoizedState,
+
+    baseState: currentHook.baseState,
+    baseQueue: currentHook.baseQueue,
+    queue: currentHook.queue,
+
+    next: null,
+  };
+
+  workInProgressHook = workInProgressHook.next = newHook;
+  return workInProgressHook;
+}

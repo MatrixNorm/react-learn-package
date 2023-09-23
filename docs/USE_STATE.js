@@ -1,20 +1,20 @@
-
-
-```javascript
+/**
+ *
+ */
 
 // ReactCurrentDispatcher.current is selected in renderWithHooks function
 
-const HooksDispatcherOnMount: Dispatcher = {
-  useEffect: mountEffect,
-  useState: mountState,
-  ...
-};
+// const HooksDispatcherOnMount: Dispatcher = {
+//   useEffect: mountEffect,
+//   useState: mountState,
+//   ...
+// };
 
-const HooksDispatcherOnUpdate: Dispatcher = {
-  useEffect: updateEffect,
-  useState: updateState,
-  ...
-};
+// const HooksDispatcherOnUpdate: Dispatcher = {
+//   useEffect: updateEffect,
+//   useState: updateState,
+//   ...
+// };
 
 type BasicStateAction<S> = (S => S) | S;
 type Dispatch<A> = A => void;
@@ -25,20 +25,36 @@ type Hook = {
   queue: any,
   next: Hook | null,
 };
+type UpdateQueue<S, A> = {
+  pending: Update<S, A> | null,
+  lanes: Lanes,
+  dispatch: (A => mixed) | null,
+  lastRenderedReducer: ((S, A) => S) | null,
+  lastRenderedState: S | null,
+};
+
+type Update<S, A> = {
+  lane: Lane,
+  revertLane: Lane,
+  action: A,
+  hasEagerState: boolean,
+  eagerState: S | null,
+  next: Update<S, A>,
+};
 
 // const [count, setCount] = React.useState(0)
 // >>> (ReactCurrentDispatcher) >>>
 // const [count, setCount] = mountState(0);
 
 function mountState<S>(
-  initialState: (() => S) | S,
+  initialState: (() => S) | S
 ): [S, Dispatch<BasicStateAction<S>>] {
   const hook = mountStateImpl(initialState);
   const queue = hook.queue;
   const dispatch: Dispatch<BasicStateAction<S>> = dispatchSetState.bind(
-    null,                    // this
+    null, // this
     currentlyRenderingFiber, // fiber
-    queue,                   // queue
+    queue // queue
   );
   queue.dispatch = dispatch;
   return [hook.memoizedState, dispatch];
@@ -61,29 +77,10 @@ function mountStateImpl<S>(initialState: (() => S) | S): Hook {
   return hook;
 }
 
-type UpdateQueue<S, A> = {
-  pending: Update<S, A> | null,
-  lanes: Lanes,
-  dispatch: (A => mixed) | null,
-  lastRenderedReducer: ((S, A) => S) | null,
-  lastRenderedState: S | null,
-};
-
-type Update<S, A> = {
-  lane: Lane,
-  revertLane: Lane,
-  action: A,
-  hasEagerState: boolean,
-  eagerState: S | null,
-  next: Update<S, A>,
-};
-
 function basicStateReducer<S>(state: S, action: BasicStateAction<S>): S {
   return typeof action === 'function' ? action(state) : action;
 }
-```
 
-```javascript
 function mountWorkInProgressHook(): Hook {
   const hook: Hook = {
     memoizedState: null,
@@ -102,17 +99,13 @@ function mountWorkInProgressHook(): Hook {
   }
   return workInProgressHook;
 }
-```
-
-```javascript
 
 function dispatchSetState<S, A>(
   fiber: Fiber,
   queue: UpdateQueue<S, A>,
-  action: A,
+  action: A
 ): void {
   const lane = requestUpdateLane(fiber); // ???
-
   const update: Update<S, A> = {
     lane,
     revertLane: NoLane,
@@ -122,11 +115,15 @@ function dispatchSetState<S, A>(
     next: (null: any),
   };
 
-  if (isRenderPhaseUpdate(fiber)) { // ???
+  const alternate = fiber.alternate;
+  if (
+    fiber === currentlyRenderingFiber || // currentlyRenderingFiber === workInProgress
+    (alternate !== null && alternate === currentlyRenderingFiber) // suspense ???
+  ) {
+    // ???
     enqueueRenderPhaseUpdate(queue, update);
   } else {
     // >>> OPTIMISATION
-    const alternate = fiber.alternate;
     if (
       fiber.lanes === NoLanes &&
       (alternate === null || alternate.lanes === NoLanes)
@@ -167,38 +164,4 @@ function dispatchSetState<S, A>(
       entangleTransitionUpdate(root, queue, lane);
     }
   }
-
-  markUpdateInDevTools(fiber, lane, action);
 }
-
-// OR WITHOUT OPTIMISATION CODE
-
-function dispatchSetState<S, A>(
-  fiber: Fiber,
-  queue: UpdateQueue<S, A>,
-  action: A,
-): void {
-  const lane = requestUpdateLane(fiber);
-
-  const update: Update<S, A> = {
-    lane,
-    revertLane: NoLane,
-    action,
-    hasEagerState: false,
-    eagerState: null,
-    next: (null: any),
-  };
-
-  if (isRenderPhaseUpdate(fiber)) {
-    enqueueRenderPhaseUpdate(queue, update);
-  } else {
-    const root = enqueueConcurrentHookUpdate(fiber, queue, update, lane);
-    if (root !== null) {
-      scheduleUpdateOnFiber(root, fiber, lane);
-      entangleTransitionUpdate(root, queue, lane);
-    }
-  }
-
-  markUpdateInDevTools(fiber, lane, action);
-}
-```
