@@ -218,10 +218,24 @@ function renderWithHooksAgain<Props, SecondArg>(
   return children;
 }
 
+/********************/
+/* WITHOUT SUSPENSE */
+/****************** */
 
-// mount:rerender //
-// current == null
-// currentlyRenderingFiber.memoizedState == <first hook>
+// mount:
+//    current = null
+// first render:
+//    currentlyRenderingFiber.memoizedState = null
+// --------------
+// wipHook = null, curHook = null 
+function mountWorkInProgressHook(): Hook {}
+
+// mount:
+//    current = null
+// rerender:
+//    currentlyRenderingFiber.memoizedState != null
+// ---------------
+// wipHook = null, curHook = null
 function updateWorkInProgressHook_mount_rerender(): Hook {
   if (workInProgressHook === null) {
     // first hook
@@ -233,80 +247,150 @@ function updateWorkInProgressHook_mount_rerender(): Hook {
   return workInProgressHook;
 }
 
-// update:first_render:first_hook //
-// current != null
+// update:
+//    current != null
+// first render:
+//    currentlyRenderingFiber.memoizedState = null
+// ---------------------------------
+// wipHook = null, curHook = null
 // currentlyRenderingFiber == workInProgress == current.alt
-// currentlyRenderingFiber.memoizedState == null
-// currentHook == null
-// workInProgressHook == null
-function updateWorkInProgressHook_update_firstRender_firstHook(): Hook {
-  const current = currentlyRenderingFiber.alternate;
-  let nextCurrentHook = current.memoizedState;
+function updateWorkInProgressHook_firstRender(): Hook {
+  let nextCurrentHook: null | Hook;
+  if (currentHook === null) {
+    const current = currentlyRenderingFiber.alternate;
+    nextCurrentHook = current.memoizedState;    
+  } else {
+    nextCurrentHook = currentHook.next;
+  }
 
   if (nextCurrentHook === null) {
-    const currentFiber = currentlyRenderingFiber.alternate;
-    if (currentFiber === null) {
-      // This is the initial render. This branch is reached when the component
-      // suspends, resumes, then renders an additional hook.
-      // Should never be reached because we should switch to the mount dispatcher first.
-      throw new Error(
-        'Update hook called on initial render. This is likely a bug in React. Please file an issue.',
-      );
-    } else {
-      // This is an update. We should always have a current hook.
-      throw new Error('Rendered more hooks than during the previous render.');
-    }
+    throw new Error('Rendered more hooks than during the previous render.');
   }
 
   currentHook = nextCurrentHook;
 
   const newHook: Hook = {
     memoizedState: currentHook.memoizedState,
+
     baseState: currentHook.baseState,
     baseQueue: currentHook.baseQueue,
     queue: currentHook.queue,
+
     next: null,
   };
-  currentlyRenderingFiber.memoizedState = workInProgressHook = newHook;
+
+  if (workInProgressHook === null) {
+    // This is the first hook in the list.
+    currentlyRenderingFiber.memoizedState = workInProgressHook = newHook;
+  } else {
+    // Append to the end of the list.
+    workInProgressHook = workInProgressHook.next = newHook;
+  }
   return workInProgressHook;
 }
 
-// update:first_render:nth_hook //
-// current != null
-// currentlyRenderingFiber == workInProgress == current.alt
-// workInProgressHook = currentlyRenderingFiber.memoizedState != null
-// currentHook != null
-function updateWorkInProgressHook_update_firstRender_nthHook(): Hook {
-  let nextCurrentHook = currentHook.next;
-  let nextWorkInProgressHook = workInProgressHook.next;
-
-  if (nextCurrentHook === null) {
-    const currentFiber = currentlyRenderingFiber.alternate;
-    if (currentFiber === null) {
-      // This is the initial render. This branch is reached when the component
-      // suspends, resumes, then renders an additional hook.
-      // Should never be reached because we should switch to the mount dispatcher first.
-      throw new Error(
-        'Update hook called on initial render. This is likely a bug in React. Please file an issue.',
-      );
-    } else {
-      // This is an update. We should always have a current hook.
+function updateWorkInProgressHook_firstRender_2(): Hook {
+  if (currentHook === null) {
+    // first hook
+    const current = currentlyRenderingFiber.alternate;
+    currentHook = current.memoizedState;
+    if (currentHook === null) {
       throw new Error('Rendered more hooks than during the previous render.');
     }
+
+    const newHook: Hook = {
+      memoizedState: currentHook.memoizedState,
+      baseState: currentHook.baseState,
+      baseQueue: currentHook.baseQueue,
+      queue: currentHook.queue,
+      next: null,
+    };
+
+    workInProgressHook = newHook
+    currentlyRenderingFiber.memoizedState = newHook;
+  } else {
+    // nth hook
+    let nextCurrentHook = currentHook.next;
+    if (nextCurrentHook === null) {
+      throw new Error('Rendered more hooks than during the previous render.');
+    }
+    currentHook = nextCurrentHook;
+
+    const newHook: Hook = {
+      memoizedState: currentHook.memoizedState,
+      baseState: currentHook.baseState,
+      baseQueue: currentHook.baseQueue,
+      queue: currentHook.queue,
+      next: null,
+    };
+
+    workInProgressHook.next = newHook
+    workInProgressHook = newHook;
   }
-
-  currentHook = nextCurrentHook;
-
-  const newHook: Hook = {
-    memoizedState: currentHook.memoizedState,
-
-    baseState: currentHook.baseState,
-    baseQueue: currentHook.baseQueue,
-    queue: currentHook.queue,
-
-    next: null,
-  };
-
-  workInProgressHook = workInProgressHook.next = newHook;
   return workInProgressHook;
+}
+
+// update:
+//    current != null
+// rerender:
+//    currentlyRenderingFiber.memoizedState != null
+// ---------------------------------
+// wipHook = null, curHook = null
+// currentlyRenderingFiber == workInProgress == current.alt
+function updateWorkInProgressHook_rerender(): Hook {
+  if (currentHook === null) {
+    const current = currentlyRenderingFiber.alternate;
+    currentHook = current.memoizedState;
+    workInProgressHook = currentlyRenderingFiber.memoizedState;
+    return workInProgressHook;
+  } else {
+    let nextCurrentHook = currentHook.next;
+    let nextWorkInProgressHook = workInProgressHook.next;
+
+    if (nextWorkInProgressHook !== null) {
+      // There's already a work-in-progress. Reuse it.
+      workInProgressHook = nextWorkInProgressHook;
+      nextWorkInProgressHook = workInProgressHook.next;
+
+      currentHook = nextCurrentHook;
+    } else {
+      // Clone from the current hook.
+
+      if (nextCurrentHook === null) {
+        const currentFiber = currentlyRenderingFiber.alternate;
+        if (currentFiber === null) {
+          // This is the initial render. This branch is reached when the component
+          // suspends, resumes, then renders an additional hook.
+          // Should never be reached because we should switch to the mount dispatcher first.
+          throw new Error(
+            'Update hook called on initial render. This is likely a bug in React. Please file an issue.',
+          );
+        } else {
+          // This is an update. We should always have a current hook.
+          throw new Error('Rendered more hooks than during the previous render.');
+        }
+      }
+
+      currentHook = nextCurrentHook;
+
+      const newHook: Hook = {
+        memoizedState: currentHook.memoizedState,
+
+        baseState: currentHook.baseState,
+        baseQueue: currentHook.baseQueue,
+        queue: currentHook.queue,
+
+        next: null,
+      };
+
+      if (workInProgressHook === null) {
+        // This is the first hook in the list.
+        currentlyRenderingFiber.memoizedState = workInProgressHook = newHook;
+      } else {
+        // Append to the end of the list.
+        workInProgressHook = workInProgressHook.next = newHook;
+      }
+    }
+    return workInProgressHook;
+  }
 }
