@@ -16,11 +16,20 @@ export const getFiberType = (fiber: Fiber): string => {
     case 3: {
       return 'hostRoot';
     }
+    case 7: {
+      return 'Fragment';
+    }
+    case 13: {
+      return `SuspenseComponent`
+    }
     case 14: {
       return `memo type:${fiber.elementType.type.name}`
     }
     case 15: {
       return `simpleMemo type:${fiber.type.name}`
+    }
+    case 22: {
+      return `OffscreenComponent`;
     }
     default: {
       let id = fiber.pendingProps["id"];

@@ -2,8 +2,8 @@
  * @flow
  */
 
-import type { Fiber, FiberRoot } from 'react-reconciler/src/ReactInternalTypes';
-import { fiberInfoShort } from './print'
+import type {Fiber, FiberRoot} from 'react-reconciler/src/ReactInternalTypes';
+import {fiberInfoShort} from './print';
 
 function __getAllChildrenOfFiber(fiber: Fiber): Fiber[] {
   let children = [];
@@ -16,17 +16,20 @@ function __getAllChildrenOfFiber(fiber: Fiber): Fiber[] {
 }
 
 export const fiberTreeToObject = (node: Fiber): Object => {
-  let { child: firstChild } = node;
+  let {child: firstChild} = node;
   if (firstChild) {
     let children = __getAllChildrenOfFiber(node);
-    return { [fiberInfoShort(node)]: children.map(fiberTreeToObject) };
+    return {[fiberInfoShort(node)]: children.map(fiberTreeToObject)};
   } else {
     return fiberInfoShort(node);
   }
 };
 
-export function fiberTreeToXMLv1(wipHostRoot: Fiber, curHostRoot: Fiber | null = null): string {
-  const tab = " ".repeat(2);
+export function fiberTreeToXMLv1(
+  wipHostRoot: Fiber,
+  curHostRoot: Fiber | null = null,
+): string {
+  const tab = ' '.repeat(2);
   // how deep from the root tree is traversed
   let depth = 0;
 
@@ -57,9 +60,9 @@ export function fiberTreeToXMLv1(wipHostRoot: Fiber, curHostRoot: Fiber | null =
     const fibInfo = fiberInfoShort(node);
     const hasThisNodeInCurTree = curNodesSet.has(node);
     const prefix = hasThisNodeInCurTree ? '!!' : '';
-    const recurTo = hasThisNodeInCurTree ?
-      __doWorkRecur :
-      (kid: Fiber) => __doWorkRecur2(kid, curNodesSet);
+    const recurTo = hasThisNodeInCurTree
+      ? __doWorkRecur
+      : (kid: Fiber) => __doWorkRecur2(kid, curNodesSet);
 
     let result = '';
     if (children.length === 0) {
@@ -76,7 +79,10 @@ export function fiberTreeToXMLv1(wipHostRoot: Fiber, curHostRoot: Fiber | null =
     return result;
   }
 
-  function putFiberTreeNodesInSet(rootNode: Fiber, resultSet: Set<Fiber>): void {
+  function putFiberTreeNodesInSet(
+    rootNode: Fiber,
+    resultSet: Set<Fiber>,
+  ): void {
     resultSet.add(rootNode);
     const children = __getAllChildrenOfFiber(rootNode);
     for (let kid of children) {
@@ -85,34 +91,44 @@ export function fiberTreeToXMLv1(wipHostRoot: Fiber, curHostRoot: Fiber | null =
   }
 
   if (curHostRoot) {
-    let curNodesSet = new Set < Fiber > ();
+    let curNodesSet = new Set<Fiber>();
     putFiberTreeNodesInSet(curHostRoot, curNodesSet);
-    return __doWorkRecur2(wipHostRoot, curNodesSet)
+    return __doWorkRecur2(wipHostRoot, curNodesSet);
   } else {
     return __doWorkRecur(wipHostRoot);
   }
-};
+}
 
-export function fiberTreeToXMLv2(wipHostRoot: Fiber, curHostRoot: Fiber | null = null): string {
-  const tab = " ".repeat(2);
+export function fiberTreeToXMLv2(
+  wipHostRoot: Fiber,
+  curHostRoot: Fiber | null = null,
+  workInProgress: Fiber | null = null,
+): string {
+  const tab = ' '.repeat(2);
   // how deep from the root tree is traversed
   let depth = 0;
 
-  function __doWorkRecur(node: Fiber, curNodesSet: Set<Fiber> | null = null): string {
+  function __doWorkRecur(
+    node: Fiber,
+    curNodesSet: Set<Fiber> | null = null,
+  ): string {
     const children = __getAllChildrenOfFiber(node);
     const padding = tab.repeat(depth);
+    
     const fibInfo = fiberInfoShort(node);
+    const wipCursor = node === workInProgress ? "<-- wip" : "";
+
     const hasThisNodeInCurTree = curNodesSet !== null && curNodesSet.has(node);
     const prefix = hasThisNodeInCurTree ? '!!' : '';
-    const recurTo = hasThisNodeInCurTree ?
-      __doWorkRecur :
-      (kid: Fiber) => __doWorkRecur(kid, curNodesSet);
+    const recurTo = hasThisNodeInCurTree
+      ? __doWorkRecur
+      : (kid: Fiber) => __doWorkRecur(kid, curNodesSet);
 
     let result = '';
     if (children.length === 0) {
-      result += `${padding}${prefix}<${fibInfo} />\n`;
+      result += `${padding}${prefix}<${fibInfo} /> ${wipCursor}\n`;
     } else {
-      result += `${padding}${prefix}<${fibInfo}>\n`;
+      result += `${padding}${prefix}<${fibInfo}> ${wipCursor}\n`;
       depth++;
       for (let kid of children) {
         result += recurTo(kid);
@@ -123,7 +139,10 @@ export function fiberTreeToXMLv2(wipHostRoot: Fiber, curHostRoot: Fiber | null =
     return result;
   }
 
-  function putFiberTreeNodesInSet(rootNode: Fiber, resultSet: Set<Fiber>): void {
+  function putFiberTreeNodesInSet(
+    rootNode: Fiber,
+    resultSet: Set<Fiber>,
+  ): void {
     resultSet.add(rootNode);
     const children = __getAllChildrenOfFiber(rootNode);
     for (let kid of children) {
@@ -132,27 +151,33 @@ export function fiberTreeToXMLv2(wipHostRoot: Fiber, curHostRoot: Fiber | null =
   }
 
   if (curHostRoot) {
-    let curNodesSet = new Set < Fiber > ();
+    let curNodesSet = new Set<Fiber>();
     putFiberTreeNodesInSet(curHostRoot, curNodesSet);
-    return __doWorkRecur(wipHostRoot, curNodesSet)
+    return __doWorkRecur(wipHostRoot, curNodesSet);
   } else {
     return __doWorkRecur(wipHostRoot);
   }
-};
+}
 
-export function fiberTreeToXMLv3(wipHostRoot: Fiber, curHostRoot: Fiber | null = null): string {
+export function fiberTreeToXMLv3(
+  wipHostRoot: Fiber,
+  curHostRoot: Fiber | null = null,
+): string {
+  const tab = ' '.repeat(2);
 
-  const tab = " ".repeat(2);
-
-  function __doWorkRecur(node: Fiber, depth: number, curNodesSet: Set<Fiber> | null = null): string {
+  function __doWorkRecur(
+    node: Fiber,
+    depth: number,
+    curNodesSet: Set<Fiber> | null = null,
+  ): string {
     const children = __getAllChildrenOfFiber(node);
     const padding = tab.repeat(depth);
     const fibInfo = fiberInfoShort(node);
     const hasThisNodeInCurTree = curNodesSet !== null && curNodesSet.has(node);
     const prefix = hasThisNodeInCurTree ? '!!' : '';
-    const recurTo = hasThisNodeInCurTree ?
-      (kid: Fiber) => __doWorkRecur(kid, depth + 1) :
-      (kid: Fiber) => __doWorkRecur(kid, depth + 1, curNodesSet);
+    const recurTo = hasThisNodeInCurTree
+      ? (kid: Fiber) => __doWorkRecur(kid, depth + 1)
+      : (kid: Fiber) => __doWorkRecur(kid, depth + 1, curNodesSet);
 
     let result = '';
     if (children.length === 0) {
@@ -167,7 +192,10 @@ export function fiberTreeToXMLv3(wipHostRoot: Fiber, curHostRoot: Fiber | null =
     return result;
   }
 
-  function putFiberTreeNodesInSet(rootNode: Fiber, resultSet: Set<Fiber>): void {
+  function putFiberTreeNodesInSet(
+    rootNode: Fiber,
+    resultSet: Set<Fiber>,
+  ): void {
     resultSet.add(rootNode);
     const children = __getAllChildrenOfFiber(rootNode);
     for (let kid of children) {
@@ -176,10 +204,10 @@ export function fiberTreeToXMLv3(wipHostRoot: Fiber, curHostRoot: Fiber | null =
   }
 
   if (curHostRoot) {
-    let curNodesSet = new Set < Fiber > ();
+    let curNodesSet = new Set<Fiber>();
     putFiberTreeNodesInSet(curHostRoot, curNodesSet);
-    return __doWorkRecur(wipHostRoot, 0, curNodesSet)
+    return __doWorkRecur(wipHostRoot, 0, curNodesSet);
   } else {
     return __doWorkRecur(wipHostRoot, 0);
   }
-};
+}
