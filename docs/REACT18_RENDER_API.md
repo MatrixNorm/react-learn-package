@@ -7,40 +7,18 @@ root.render(reactElem);
 ```
 
 ```javascript
+//////////////////////////////////////////
+// react-dom/src/client/ReactDOMRoot,js //
+//////////////////////////////////////////
+
 export function createRoot(
   container: Element | Document | DocumentFragment,
   options?: CreateRootOptions,
 ): RootType {
-  let isStrictMode = false;
-  let concurrentUpdatesByDefaultOverride = false;
-  let identifierPrefix = '';
-  let onRecoverableError = defaultOnRecoverableError;
-  let transitionCallbacks = null;
-
-  if (options !== null && options !== undefined) {
-    // ... set options
-  }
-
-  const root = createContainer(
-    container,
-    ConcurrentRoot,
-    null,
-    isStrictMode,
-    concurrentUpdatesByDefaultOverride,
-    identifierPrefix,
-    onRecoverableError,
-    transitionCallbacks,
-  );
+  const root = createContainer(container, options);
   markContainerAsRoot(root.current, container);
   Dispatcher.current = ReactDOMClientDispatcher;
-
-  const rootContainerElement: Document | Element | DocumentFragment =
-    container.nodeType === COMMENT_NODE
-      ? (container.parentNode: any)
-      : container;
-  listenToAllSupportedEvents(rootContainerElement);
-
-  // $FlowFixMe[invalid-constructor] Flow no longer supports calling new on functions
+  listenToAllSupportedEvents(container);
   return new ReactDOMRoot(root);
 }
 
@@ -54,41 +32,24 @@ ReactDOMRoot.prototype.render =
     if (root === null) {
       throw new Error('Cannot update an unmounted root.');
     }
+    // react-reconciler/src/ReactFiberReconciler
     updateContainer(children, root, null, null);
   };
 
-// import { updateContainer } from 'react-reconciler/src/ReactFiberReconciler';
-```
-
-```javascript
-// react-reconciler/src/ReactFiberReconciler
+///////////////////////////////////////////////
+// react-reconciler/src/ReactFiberReconciler //
+///////////////////////////////////////////////
 
 export function updateContainer(
   element: ReactNodeList,
   container: OpaqueRoot,
-  parentComponent: ?React$Component<any, any>,
-  callback: ?Function,
+  parentComponent: ?React$Component<any, any>
 ): Lane {
   const current = container.current;
   const lane = requestUpdateLane(current);
 
-  const context = getContextForSubtree(parentComponent);
-  if (container.context === null) {
-    container.context = context;
-  } else {
-    container.pendingContext = context;
-  }
-
   const update = createUpdate(lane);
-  // Caution: React DevTools currently depends on this property
-  // being called "element".
   update.payload = {element};
-
-  callback = callback === undefined ? null : callback;
-  if (callback !== null) {
-    update.callback = callback;
-  }
-
   /* update =
     {
       lane: 32,
@@ -107,20 +68,40 @@ export function updateContainer(
       callback: null,
       next: null
     }
-
   */
   const root = enqueueUpdate(current, update, lane);
   if (root !== null) {
     scheduleUpdateOnFiber(root, current, lane);
     entangleTransitions(root, current, lane);
   }
-
   return lane;
 }
-```
 
-```javascript
-// react-reconciler/src/ReactFiberClassUpdateQueue
+/////////////////////////////////////////////////////
+// react-reconciler/src/ReactFiberClassUpdateQueue //
+/////////////////////////////////////////////////////
+
+type Update<State> = {
+  lane: Lane,
+  tag: 0 | 1 | 2 | 3,
+  payload: any,
+  callback: (() => mixed) | null,
+  next: Update<State> | null,
+};
+
+type SharedQueue<State> = {
+  pending: Update<State> | null,
+  lanes: Lanes,
+  hiddenCallbacks: Array<() => mixed> | null,
+};
+
+type UpdateQueue<State> = {
+  baseState: State,
+  firstBaseUpdate: Update<State> | null,
+  lastBaseUpdate: Update<State> | null,
+  shared: SharedQueue<State>,
+  callbacks: Array<() => mixed> | null,
+};
 
 export function enqueueUpdate<State>(
   fiber: Fiber,
@@ -128,15 +109,10 @@ export function enqueueUpdate<State>(
   lane: Lane,
 ): FiberRoot | null {
   const updateQueue = fiber.updateQueue;
-  if (updateQueue === null) {
-    // Only occurs if the fiber has been unmounted.
-    return null;
-  }
-
-  const sharedQueue: SharedQueue<State> = (updateQueue: any).shared;
+  const sharedQueue: SharedQueue<State> = updateQueue.shared;
 
   if (isUnsafeClassRenderPhaseUpdate(fiber)) {
-    // ... this branch is not visited
+    // ???
   } else {
     return enqueueConcurrentClassUpdate(fiber, sharedQueue, update, lane);
   }
@@ -144,7 +120,18 @@ export function enqueueUpdate<State>(
 ```
 
 ```javascript
-// react-reconciler/src/ReactFiberConcurrentUpdates
+//////////////////////////////////////////////////////
+// react-reconciler/src/ReactFiberConcurrentUpdates //
+//////////////////////////////////////////////////////
+
+type ConcurrentUpdate = {
+  next: ConcurrentUpdate,
+  lane: Lane,
+};
+
+type ConcurrentQueue = {
+  pending: ConcurrentUpdate | null,
+};
 
 const concurrentQueues: Array<any> = [];
 let concurrentQueuesIndex = 0;
@@ -152,8 +139,8 @@ let concurrentlyUpdatedLanes: Lanes = NoLanes;
 
 export function enqueueConcurrentClassUpdate<State>(
   fiber: Fiber,
-  queue: ClassQueue<State>,
-  update: ClassUpdate<State>,
+  queue: SharedQueue<State>,
+  update: Update<State>,
   lane: Lane,
 ): FiberRoot | null {
   const concurrentQueue: ConcurrentQueue = (queue: any);
@@ -184,7 +171,9 @@ function enqueueUpdate(
 ```
 
 ```javascript
-// ReactFiberWorkLoop
+////////////////////////
+// ReactFiberWorkLoop //
+////////////////////////
 
 export function scheduleUpdateOnFiber(
   root: FiberRoot,
@@ -228,14 +217,6 @@ export function scheduleUpdateOnFiber(
   } else {
     // This is a normal update, scheduled from outside the render phase. For
     // example, during an input event.
-    if (enableUpdaterTracking) {
-      if (isDevToolsPresent) {
-        addFiberToLanesMap(root, fiber, lane);
-      }
-    }
-
-    warnIfUpdatesNotWrappedWithActDEV(fiber);
-
     if (root === workInProgressRoot) {
       // Received an update to a tree that's in the middle of rendering. Mark
       // that there was an interleaved update work on this root.
@@ -257,6 +238,7 @@ export function scheduleUpdateOnFiber(
     }
 
     ensureRootIsScheduled(root);
+    
     if (
       lane === SyncLane &&
       executionContext === NoContext &&
