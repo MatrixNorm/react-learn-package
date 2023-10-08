@@ -8,6 +8,7 @@ describe('root API', () => {
   let ReactDOMClient;
   let ReactTestUtils;
   let SchedulerMock;
+  let MatrixNorm;
 
   beforeEach(() => {
     jest.resetModules(); // ???
@@ -17,6 +18,7 @@ describe('root API', () => {
     ReactDOMClient = require('react-dom/client');
     ReactTestUtils = require('react-dom/test-utils');
     SchedulerMock = require('scheduler/unstable_mock');
+    MatrixNorm = require('matrixnorm');
 
     containerForReactComponent = document.createElement('div');
     document.body.appendChild(containerForReactComponent);
@@ -57,12 +59,19 @@ describe('root API', () => {
 
     const root = ReactDOMClient.createRoot(containerForReactComponent);
     root.render(<App />);
-    // wait for processRootScheduleInMicrotask to be called
-    console.log('BEFORE: await new Promise(queueMicrotask)');
-    await new Promise(queueMicrotask);
+
+    console.log(
+      'processRootScheduleInMicrotask has been placed into miscrotask queue by now'
+    );
+    await new Promise(weAreHappy => {
+      queueMicrotask(() => {
+        console.log('hello from microtask queue');
+        weAreHappy();
+      });
+    });
     console.log(document.body.innerHTML);
     SchedulerMock.unstable_flushNumberOfYields(1);
-    console.log(document.body.innerHTML);
+    //console.log(document.body.innerHTML);
   });
 
   it('old_act', () => {

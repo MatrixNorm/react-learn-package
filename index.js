@@ -111,10 +111,10 @@ export const getStackTrace = (depth: number): string => {
   Error.captureStackTrace(obj, getStackTrace);
   let stackStr = obj.stack
     .split('\n')
-    .slice(1, depth + 1)
+    .slice(2, depth + 2)
     .map((frame, j) => {
-      let num = j + ' ';
-      return num + frame.trim().slice(3).replace('/home/ubuntu/projects/react-fork/packages/', '');
+      let num = j + 1 + ' ';
+      return num + frame.trim().slice(3).replace('/home/ubuntu/projects/react-fork/', '');
     })
     // .map(({functionName, fileName}) => `${functionName}:: ${fileName}`)
     .join('\n');
