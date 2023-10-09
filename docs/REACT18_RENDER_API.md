@@ -6,6 +6,8 @@ const root = client.createRoot(containerDomElement);
 root.render(reactElem);
 ```
 
+##
+
 ```javascript
 //////////////////////////////////////////
 // react-dom/src/client/ReactDOMRoot,js //
@@ -46,7 +48,7 @@ export function updateContainer(
   parentComponent: ?React$Component<any, any>
 ): Lane {
   const current = container.current;
-  const lane = requestUpdateLane(current);
+  const lane = requestUpdateLane(current); // lane = DefaultLane
 
   const update = createUpdate(lane);
   update.payload = {element};
@@ -70,13 +72,19 @@ export function updateContainer(
     }
   */
   const root = enqueueUpdate(current /* host root*/, update, lane);
+  // root === container
   if (root !== null) {
     scheduleUpdateOnFiber(root, current, lane);
+    // ???
     entangleTransitions(root, current, lane);
   }
   return lane;
 }
+```
 
+##
+
+```javascript
 /////////////////////////////////////////////////////
 // react-reconciler/src/ReactFiberClassUpdateQueue //
 /////////////////////////////////////////////////////
@@ -110,15 +118,10 @@ export function enqueueUpdate<State>(
 ): FiberRoot | null {
   const updateQueue = fiber.updateQueue;
   const sharedQueue: SharedQueue<State> = updateQueue.shared;
-  if (isUnsafeClassRenderPhaseUpdate(fiber)) {
-    // ???
-  } else {
-    return enqueueConcurrentClassUpdate(fiber, sharedQueue, update, lane);
-  }
+  // === ReactFiberConcurrentUpdates
+  return enqueueConcurrentClassUpdate(fiber, sharedQueue, update, lane);
 }
-```
 
-```javascript
 //////////////////////////////////////////////////////
 // react-reconciler/src/ReactFiberConcurrentUpdates //
 //////////////////////////////////////////////////////
@@ -158,9 +161,8 @@ function enqueueUpdate(
   concurrentQueues[concurrentQueuesIndex++] = queue;
   concurrentQueues[concurrentQueuesIndex++] = update;
   concurrentQueues[concurrentQueuesIndex++] = lane;
-
+  // ???
   concurrentlyUpdatedLanes = mergeLanes(concurrentlyUpdatedLanes, lane);
-
   fiber.lanes = mergeLanes(fiber.lanes, lane);
   const alternate = fiber.alternate;
   if (alternate !== null) {
@@ -169,12 +171,12 @@ function enqueueUpdate(
 }
 ```
 
+##
+
 ```javascript
 ////////////////////////
 // ReactFiberWorkLoop //
 ////////////////////////
-
-// !!! Initial Render Path !!! //
 
 // workInProgressRoot === null
 export function scheduleUpdateOnFiber(
@@ -190,11 +192,9 @@ export function scheduleUpdateOnFiber(
 // mightHavePendingSyncWork = false
 // didScheduleMicrotask = false
 // firstScheduledRoot = null
-// lastScheduledRoot = null
 export function ensureRootIsScheduled(root: FiberRoot): void {
   mightHavePendingSyncWork = true;
   firstScheduledRoot = root
-  lastScheduledRoot = root;
   if (!didScheduleMicrotask) {
     didScheduleMicrotask = true;
     queueMicrotask(processRootScheduleInMicrotask);
@@ -233,115 +233,55 @@ function scheduleCallback(
   // SchedulerMock.unstable_scheduleCallback
   return Scheduler_scheduleCallback(priorityLevel, callback);
 }
+```
 
+```javascript
 export function performConcurrentWorkOnRoot(
   root: FiberRoot,
   didTimeout: boolean,
 ): RenderTaskFn | null {
-  // We disable time-slicing in some cases: if the work has been CPU-bound
-  // for too long ("expired" work, to prevent starvation), or we're in
-  // sync-updates-by-default mode.
-  // TODO: We only check `didTimeout` defensively, to account for a Scheduler
-  // bug we're still investigating. Once the bug in Scheduler is fixed,
-  // we can remove this, since we track expiration ourselves.
   const shouldTimeSlice =
     !includesBlockingLane(root, lanes) &&
-    !includesExpiredLane(root, lanes) &&
-    (disableSchedulerTimeoutInWorkLoop || !didTimeout);
+    !includesExpiredLane(root, lanes);
 
   let exitStatus = shouldTimeSlice
     ? renderRootConcurrent(root, lanes)
     : renderRootSync(root, lanes);
-  if (exitStatus !== RootInProgress) {
-    if (exitStatus === RootErrored) {
-      // If something threw an error, try rendering one more time. We'll
-      // render synchronously to block concurrent data mutations, and we'll
-      // includes all pending updates are included. If it still fails after
-      // the second attempt, we'll give up and commit the resulting tree.
-      const originallyAttemptedLanes = lanes;
-      const errorRetryLanes = getLanesToRetrySynchronouslyOnError(
-        root,
-        originallyAttemptedLanes,
-      );
-      if (errorRetryLanes !== NoLanes) {
-        lanes = errorRetryLanes;
-        exitStatus = recoverFromConcurrentError(
-          root,
-          originallyAttemptedLanes,
-          errorRetryLanes,
-        );
-      }
-    }
-    if (exitStatus === RootFatalErrored) {
-      const fatalError = workInProgressRootFatalError;
-      prepareFreshStack(root, NoLanes);
-      markRootSuspended(root, lanes);
-      ensureRootIsScheduled(root);
-      throw fatalError;
-    }
-
-    if (exitStatus === RootDidNotComplete) {
-      // The render unwound without completing the tree. This happens in special
-      // cases where need to exit the current render without producing a
-      // consistent tree or committing.
-      markRootSuspended(root, lanes);
-    } else {
-      // The render completed.
-
-      // Check if this render may have yielded to a concurrent event, and if so,
-      // confirm that any newly rendered stores are consistent.
-      // TODO: It's possible that even a concurrent render may never have yielded
-      // to the main thread, if it was fast enough, or if it expired. We could
-      // skip the consistency check in that case, too.
-      const renderWasConcurrent = !includesBlockingLane(root, lanes);
-      const finishedWork: Fiber = (root.current.alternate: any);
-      if (
-        renderWasConcurrent &&
-        !isRenderConsistentWithExternalStores(finishedWork)
-      ) {
-        // A store was mutated in an interleaved event. Render again,
-        // synchronously, to block further mutations.
-        exitStatus = renderRootSync(root, lanes);
-
-        // We need to check again if something threw
-        if (exitStatus === RootErrored) {
-          const originallyAttemptedLanes = lanes;
-          const errorRetryLanes = getLanesToRetrySynchronouslyOnError(
-            root,
-            originallyAttemptedLanes,
-          );
-          if (errorRetryLanes !== NoLanes) {
-            lanes = errorRetryLanes;
-            exitStatus = recoverFromConcurrentError(
-              root,
-              originallyAttemptedLanes,
-              errorRetryLanes,
-            );
-            // We assume the tree is now consistent because we didn't yield to any
-            // concurrent events.
-          }
-        }
-        if (exitStatus === RootFatalErrored) {
-          const fatalError = workInProgressRootFatalError;
-          prepareFreshStack(root, NoLanes);
-          markRootSuspended(root, lanes);
-          ensureRootIsScheduled(root);
-          throw fatalError;
-        }
-
-        // FIXME: Need to check for RootDidNotComplete again. The factoring here
-        // isn't ideal.
-      }
-
-      // We now have a consistent tree. The next step is either to commit it,
-      // or, if something suspended, wait to commit it after a timeout.
-      root.finishedWork = finishedWork;
-      root.finishedLanes = lanes;
-      finishConcurrentRender(root, exitStatus, finishedWork, lanes);
-    }
-  }
+  
+  // more stuff ... 
 
   ensureRootIsScheduled(root);
   return getContinuationForRoot(root, originalCallbackNode);
+}
+
+// workInProgressRoot = null
+//  workInProgressRootRenderLanes = NoLanes
+function renderRootSync(root: FiberRoot, lanes: Lanes) {
+  const prevExecutionContext = executionContext;
+  executionContext |= RenderContext;
+  const prevDispatcher = pushDispatcher(root.containerInfo);
+  const prevCacheDispatcher = pushCacheDispatcher();
+
+  workInProgressTransitions = getTransitionsForLanes(root, lanes);
+  prepareFreshStack(root, lanes);
+
+  outer: do {
+    try {
+      workLoopSync();
+      break;
+    } catch (thrownValue) {
+      handleThrow(root, thrownValue);
+    }
+  } while (true);
+
+  resetContextDependencies();
+  executionContext = prevExecutionContext;
+  popDispatcher(prevDispatcher);
+  popCacheDispatcher(prevCacheDispatcher);
+
+  workInProgressRoot = null;
+  workInProgressRootRenderLanes = NoLanes;
+  finishQueueingConcurrentUpdates();
+  return workInProgressRootExitStatus;
 }
 ```

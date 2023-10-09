@@ -109,9 +109,10 @@ export const fiberTreeToXML3Y: Fiber => string = fiberTreeToXMLWithGenerator(ite
 export const getStackTrace = (depth: number): string => {
   let obj = {stack: ''};
   Error.captureStackTrace(obj, getStackTrace);
+  //console.log(obj.stack)
   let stackStr = obj.stack
     .split('\n')
-    .slice(2, depth + 2)
+    .slice(1, depth + 1)
     .map((frame, j) => {
       let num = j + 1 + ' ';
       return num + frame.trim().slice(3).replace('/home/ubuntu/projects/react-fork/', '');
