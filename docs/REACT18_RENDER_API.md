@@ -262,7 +262,7 @@ function renderRootSync(root: FiberRoot, lanes: Lanes) {
   const prevDispatcher = pushDispatcher(root.containerInfo);
   const prevCacheDispatcher = pushCacheDispatcher();
 
-  workInProgressTransitions = getTransitionsForLanes(root, lanes);
+  workInProgressTransitions = getTransitionsForLanes(root, lanes); // ???
   prepareFreshStack(root, lanes);
 
   outer: do {
@@ -283,5 +283,64 @@ function renderRootSync(root: FiberRoot, lanes: Lanes) {
   workInProgressRootRenderLanes = NoLanes;
   finishQueueingConcurrentUpdates();
   return workInProgressRootExitStatus;
+}
+
+function prepareFreshStack(root: FiberRoot, lanes: Lanes): Fiber {
+  root.finishedWork = null;
+  root.finishedLanes = NoLanes;
+  workInProgressRoot = root;
+  const rootWorkInProgress = createWorkInProgress(root.current, null);
+  workInProgress = rootWorkInProgress;
+  workInProgressRootRenderLanes = renderLanes = lanes;
+  workInProgressSuspendedReason = NotSuspended;
+  workInProgressThrownValue = null;
+  workInProgressRootDidAttachPingListener = false;
+  workInProgressRootExitStatus = RootInProgress;
+  workInProgressRootFatalError = null;
+  workInProgressRootSkippedLanes = NoLanes;
+  workInProgressRootInterleavedUpdatedLanes = NoLanes;
+  workInProgressRootRenderPhaseUpdatedLanes = NoLanes;
+  workInProgressRootPingedLanes = NoLanes;
+  workInProgressRootConcurrentErrors = null;
+  workInProgressRootRecoverableErrors = null;
+
+  finishQueueingConcurrentUpdates();
+
+  return rootWorkInProgress;
+}
+
+export function finishQueueingConcurrentUpdates(): void {
+  const endIndex = concurrentQueuesIndex;
+  concurrentQueuesIndex = 0;
+
+  concurrentlyUpdatedLanes = NoLanes;
+
+  let i = 0;
+  while (i < endIndex) {
+    const fiber: Fiber = concurrentQueues[i];
+    concurrentQueues[i++] = null;
+    const queue: ConcurrentQueue = concurrentQueues[i];
+    concurrentQueues[i++] = null;
+    const update: ConcurrentUpdate = concurrentQueues[i];
+    concurrentQueues[i++] = null;
+    const lane: Lane = concurrentQueues[i];
+    concurrentQueues[i++] = null;
+
+    if (queue !== null && update !== null) {
+      const pending = queue.pending;
+      if (pending === null) {
+        // This is the first update. Create a circular list.
+        update.next = update;
+      } else {
+        update.next = pending.next;
+        pending.next = update;
+      }
+      queue.pending = update;
+    }
+
+    if (lane !== NoLane) {
+      markUpdateLaneFromFiberToRoot(fiber, update, lane);
+    }
+  }
 }
 ```
