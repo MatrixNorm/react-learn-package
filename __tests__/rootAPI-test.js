@@ -34,7 +34,6 @@ describe('root API', () => {
   function App() {
     console.log('=== App ===');
     const [count, setCount] = React.useState(0);
-
     return <span>{count}</span>;
   }
 
@@ -72,11 +71,15 @@ describe('root API', () => {
     console.log(document.body.innerHTML);
     Scheduler.unstable_flushNumberOfYields(1);
     console.log(document.body.innerHTML);
+    console.log("end of test");
   });
 
-  it('new_noact_nonmocked_scheduler', async () => {
-    // go to ./scripts/jest/setupHostConfigs.js
-    // and comment out jest.mock('scheduler', ...)
+  it('new_noact_real_scheduler', async () => {
+    jest.unmock('scheduler');
+    jest.resetModules();
+    React = require('react');
+    ReactDOMClient = require('react-dom/client');
+
     global.IS_REACT_ACT_ENVIRONMENT = false;
 
     const root = ReactDOMClient.createRoot(containerForReactComponent);
@@ -92,8 +95,10 @@ describe('root API', () => {
       });
     });
     console.log(document.body.innerHTML);
+    console.log("run pending timers");
     jest.runOnlyPendingTimers();
     console.log(document.body.innerHTML);
+    console.log("end of test");
   });
 
   it('old_act', () => {
