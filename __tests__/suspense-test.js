@@ -9,6 +9,7 @@ describe('useState hook', () => {
   let ReactDOM;
   let ReactDOMClient;
   let ReactTestUtils;
+  let Scheduler;
 
   beforeEach(() => {
     jest.resetModules(); // ???
@@ -17,6 +18,7 @@ describe('useState hook', () => {
     ReactDOM = require('react-dom');
     ReactDOMClient = require('react-dom/client');
     ReactTestUtils = require('react-dom/test-utils');
+    Scheduler = require('scheduler');
 
     containerForReactComponent = document.createElement('div');
     document.body.appendChild(containerForReactComponent);
@@ -29,14 +31,9 @@ describe('useState hook', () => {
     containerForReactComponent = null;
   });
 
-  function renderIt(reactElem) {
-    ReactTestUtils.act(() => {
-      const root = ReactDOMClient.createRoot(containerForReactComponent);
-      root.render(reactElem);
-    });
-  }
+  it('throws_promise', async () => {
+    global.IS_REACT_ACT_ENVIRONMENT = false;
 
-  it('simply_throws_promise', () => {
     function App() {
       return (
         <React.Suspense fallback={<FallbackPath />}>
@@ -54,7 +51,21 @@ describe('useState hook', () => {
       return <p>Moose...</p>;
     }
 
-    renderIt(<App />);
+    const root = ReactDOMClient.createRoot(containerForReactComponent);
+    root.render(<App />);
+
+    console.log(
+      'processRootScheduleInMicrotask has been placed into miscrotask queue by now'
+    );
+    await new Promise(weAreHappy => {
+      queueMicrotask(() => {
+        console.log('hello from microtask queue');
+        weAreHappy();
+      });
+    });
     console.log(document.body.innerHTML);
+    Scheduler.unstable_flushNumberOfYields(1);
+    console.log(document.body.innerHTML);
+    console.log("end of test");
   });
 });

@@ -99,11 +99,15 @@ export function fiberTreeToXMLv1(
   }
 }
 
-export function fiberTreeToXMLv2(
+export function fiberTreeToXMLv2({
+  wipHostRoot,
+  curHostRoot = null,
+  workInProgress = null,
+}: {
   wipHostRoot: Fiber,
-  curHostRoot: Fiber | null = null,
-  workInProgress: Fiber | null = null,
-): string {
+  curHostRoot: Fiber | null,
+  workInProgress: Fiber | null,
+}): string {
   const tab = ' '.repeat(2);
   // how deep from the root tree is traversed
   let depth = 0;
@@ -114,9 +118,10 @@ export function fiberTreeToXMLv2(
   ): string {
     const children = __getAllChildrenOfFiber(node);
     const padding = tab.repeat(depth);
-    
+
     const fibInfo = fiberInfoShort(node);
-    const wipCursor = node === workInProgress ? "<-- wip" : "";
+    const wipCursor =
+      workInProgress && node === workInProgress ? '<-- wip' : '';
 
     const hasThisNodeInCurTree = curNodesSet !== null && curNodesSet.has(node);
     const prefix = hasThisNodeInCurTree ? '!!' : '';
