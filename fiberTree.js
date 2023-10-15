@@ -100,21 +100,30 @@ export function fiberTreeToXMLv1(
 }
 
 export function fiberTreeToXMLv2({
-  wipHostRoot,
-  curHostRoot = null,
+  hostRoot,
+  altHostRoot = null,
   workInProgress = null,
 }: {
-  wipHostRoot: Fiber,
-  curHostRoot: Fiber | null,
-  workInProgress: Fiber | null,
+  hostRoot: Fiber,
+  altHostRoot?: Fiber | null,
+  workInProgress?: Fiber | null,
 }): string {
+  // tabulation size
   const tab = ' '.repeat(2);
   // how deep from the root tree is traversed
   let depth = 0;
 
+  if (altHostRoot) {
+    let altNodesSet = new Set<Fiber>();
+    putFiberTreeNodesInSet(altHostRoot, altNodesSet);
+    return __doWorkRecur(hostRoot, altNodesSet);
+  } else {
+    return __doWorkRecur(hostRoot);
+  }
+
   function __doWorkRecur(
     node: Fiber,
-    curNodesSet: Set<Fiber> | null = null,
+    altNodesSet: Set<Fiber> | null = null,
   ): string {
     const children = __getAllChildrenOfFiber(node);
     const padding = tab.repeat(depth);
@@ -123,11 +132,11 @@ export function fiberTreeToXMLv2({
     const wipCursor =
       workInProgress && node === workInProgress ? '<-- wip' : '';
 
-    const hasThisNodeInCurTree = curNodesSet !== null && curNodesSet.has(node);
-    const prefix = hasThisNodeInCurTree ? '!!' : '';
-    const recurTo = hasThisNodeInCurTree
+    const hasThisNodeInAltTree = altNodesSet !== null && altNodesSet.has(node);
+    const prefix = hasThisNodeInAltTree ? '!!' : '';
+    const recurToFun = hasThisNodeInAltTree
       ? __doWorkRecur
-      : (kid: Fiber) => __doWorkRecur(kid, curNodesSet);
+      : (kid: Fiber) => __doWorkRecur(kid, altNodesSet);
 
     let result = '';
     if (children.length === 0) {
@@ -136,7 +145,7 @@ export function fiberTreeToXMLv2({
       result += `${padding}${prefix}<${fibInfo}> ${wipCursor}\n`;
       depth++;
       for (let kid of children) {
-        result += recurTo(kid);
+        result += recurToFun(kid);
       }
       depth--;
       result += `${padding}${prefix}</${fibInfo}>\n`;
@@ -153,14 +162,6 @@ export function fiberTreeToXMLv2({
     for (let kid of children) {
       putFiberTreeNodesInSet(kid, resultSet);
     }
-  }
-
-  if (curHostRoot) {
-    let curNodesSet = new Set<Fiber>();
-    putFiberTreeNodesInSet(curHostRoot, curNodesSet);
-    return __doWorkRecur(wipHostRoot, curNodesSet);
-  } else {
-    return __doWorkRecur(wipHostRoot);
   }
 }
 
