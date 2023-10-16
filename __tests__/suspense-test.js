@@ -10,6 +10,7 @@ describe('useState hook', () => {
   let ReactDOMClient;
   let ReactTestUtils;
   let Scheduler;
+  let Matrixnorm;
 
   beforeEach(() => {
     jest.resetModules(); // ???
@@ -19,6 +20,7 @@ describe('useState hook', () => {
     ReactDOMClient = require('react-dom/client');
     ReactTestUtils = require('react-dom/test-utils');
     Scheduler = require('scheduler');
+    Matrixnorm = require('matrixnorm');
 
     containerForReactComponent = document.createElement('div');
     document.body.appendChild(containerForReactComponent);
@@ -52,6 +54,17 @@ describe('useState hook', () => {
     }
 
     const root = ReactDOMClient.createRoot(containerForReactComponent);
+
+    let curHostRoot = root._internalRoot.current;
+    console.log(
+      'current tree: ',
+      Matrixnorm.fiberTreeToXML({
+        hostRoot: curHostRoot,
+      }),
+      'curHostRoot.alternate: ',
+      curHostRoot.alternate
+    );
+
     root.render(<App />);
 
     console.log(
@@ -63,9 +76,29 @@ describe('useState hook', () => {
         weAreHappy();
       });
     });
-    console.log(document.body.innerHTML);
+    console.log(
+      document.body.innerHTML,
+      curHostRoot === root._internalRoot.current
+    );
     Scheduler.unstable_flushNumberOfYields(1);
+
+    console.log(
+      curHostRoot === root._internalRoot.current,
+      curHostRoot === root._internalRoot.current.alternate
+    );
+
+    console.log(
+      'current tree:\n',
+      Matrixnorm.fiberTreeToXML({
+        hostRoot: root._internalRoot.current,
+      }),
+      '\nalternate tree:\n',
+      Matrixnorm.fiberTreeToXML({
+        hostRoot: root._internalRoot.current.alternate,
+      })
+    );
+
     console.log(document.body.innerHTML);
-    console.log("end of test");
+    console.log('end of test');
   });
 });
