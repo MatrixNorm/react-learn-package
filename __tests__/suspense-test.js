@@ -33,7 +33,7 @@ describe('useState hook', () => {
     containerForReactComponent = null;
   });
 
-  it('throws_promise', async () => {
+  it('t1 throws_promise', async () => {
     global.IS_REACT_ACT_ENVIRONMENT = false;
 
     function App() {
@@ -98,6 +98,55 @@ describe('useState hook', () => {
       })
     );
 
+    console.log(document.body.innerHTML);
+    console.log('end of test');
+  });
+
+  it('t2 promise_resolved_later', async () => {
+    global.IS_REACT_ACT_ENVIRONMENT = false;
+
+    const deferred = {};
+    const promise = new Promise(resolve => {
+      deferred.resolve = () => resolve('bear');
+    });
+    promise.then(value => {
+      console.log(`primise has resolved with value of ${value}`);
+    });
+
+    const xxx = Matrixnorm.wrapPromiseForSuspense(promise);
+
+    function App() {
+      return (
+        <React.Suspense fallback={<FallbackPath />}>
+          <MainPath />
+        </React.Suspense>
+      );
+    }
+
+    function MainPath() {
+      console.log(getStackTrace(5));
+      const data = xxx();
+      return <div>{data}</div>;
+    }
+
+    function FallbackPath() {
+      return <p>Moose...</p>;
+    }
+
+    const root = ReactDOMClient.createRoot(containerForReactComponent);
+    root.render(<App />);
+
+    console.log(
+      'processRootScheduleInMicrotask has been placed into miscrotask queue by now'
+    );
+    await new Promise(queueMicrotask);
+    Scheduler.unstable_flushNumberOfYields(1);
+    console.log(document.body.innerHTML);
+    console.log('...');
+    deferred.resolve();
+    await new Promise(queueMicrotask);
+    Scheduler.unstable_advanceTime(1000);
+    Scheduler.unstable_flushNumberOfYields(1);
     console.log(document.body.innerHTML);
     console.log('end of test');
   });

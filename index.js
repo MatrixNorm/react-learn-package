@@ -2,23 +2,23 @@
  * @flow
  */
 
-import type { Fiber, FiberRoot } from 'react-reconciler/src/ReactInternalTypes';
-import { fiberInfoShort } from './print'
+import type {Fiber, FiberRoot} from 'react-reconciler/src/ReactInternalTypes';
+import {fiberInfoShort} from './print';
 
 export * from './print';
-export { fiberTreeToXMLv2 as fiberTreeToXML } from './fiberTree';
-export { fiberTreeToXMLv4 as fiberTreeToXML2 } from './fiberTree2';
+export {fiberTreeToXMLv2 as fiberTreeToXML} from './fiberTree';
+export {fiberTreeToXMLv4 as fiberTreeToXML2} from './fiberTree2';
 
-type Phase = "enter" | "leave" | "leaf";
-type FiberTreeGenerator = Generator<[Phase, Fiber], void, void>
+type Phase = 'enter' | 'leave' | 'leaf';
+type FiberTreeGenerator = Generator<[Phase, Fiber], void, void>;
 
 function* iterFiberTree(node: Fiber): FiberTreeGenerator {
   if (node.child) {
-    yield ["enter", node];
+    yield ['enter', node];
     yield* iterFiberTree(node.child);
-    yield ["leave", node];
+    yield ['leave', node];
   } else {
-    yield ["leaf", node];
+    yield ['leaf', node];
   }
   if (node.sibling) {
     yield* iterFiberTree(node.sibling);
@@ -27,13 +27,13 @@ function* iterFiberTree(node: Fiber): FiberTreeGenerator {
 
 function* iterFiberTreeX(node: Fiber): FiberTreeGenerator {
   if (node.child) {
-    yield ["enter", node];
+    yield ['enter', node];
     for (let res of iterFiberTreeX(node.child)) {
       yield res;
     }
-    yield ["leave", node];
+    yield ['leave', node];
   } else {
-    yield ["leaf", node];
+    yield ['leaf', node];
   }
   if (node.sibling) {
     for (let res of iterFiberTreeX(node.sibling)) {
@@ -45,13 +45,13 @@ function* iterFiberTreeX(node: Fiber): FiberTreeGenerator {
 function* iterFiberTreeY(node: Fiber): FiberTreeGenerator {
   while (node) {
     if (node.child) {
-      yield ["enter", node];
+      yield ['enter', node];
       for (let res of iterFiberTreeY(node.child)) {
         yield res;
       }
-      yield ["leave", node];
+      yield ['leave', node];
     } else {
-      yield ["leaf", node];
+      yield ['leaf', node];
     }
 
     if (node.sibling) {
@@ -59,36 +59,39 @@ function* iterFiberTreeY(node: Fiber): FiberTreeGenerator {
     } else {
       break;
     }
-  };
-}
-
-const fiberTreeToXMLWithGenerator = (generator: Fiber => FiberTreeGenerator) => (startNode: Fiber): string => {
-  const tab = "  ";
-  let result = "";
-  let d = -1;
-
-  for (let [phase, fiber] of generator(startNode)) {
-    const fibInfo = fiberInfoShort(fiber);
-    if (phase === "enter") {
-      d++;
-      result += `${tab.repeat(d)}<${fibInfo}>\n`;
-    } else if (phase === "leave") {
-      result += `${tab.repeat(d)}</${fibInfo}>\n`;
-      d--;
-    } else {
-      d++;
-      result += `${tab.repeat(d)}<${fibInfo} />\n`;
-      d--;
-    }
   }
-  return result;
 }
 
-export const fiberTreeToXML3: Fiber => string = fiberTreeToXMLWithGenerator(iterFiberTree);
-export const fiberTreeToXML3X: Fiber => string = fiberTreeToXMLWithGenerator(iterFiberTreeX);
-export const fiberTreeToXML3Y: Fiber => string = fiberTreeToXMLWithGenerator(iterFiberTreeY);
+const fiberTreeToXMLWithGenerator =
+  (generator: Fiber => FiberTreeGenerator) =>
+  (startNode: Fiber): string => {
+    const tab = '  ';
+    let result = '';
+    let d = -1;
 
+    for (let [phase, fiber] of generator(startNode)) {
+      const fibInfo = fiberInfoShort(fiber);
+      if (phase === 'enter') {
+        d++;
+        result += `${tab.repeat(d)}<${fibInfo}>\n`;
+      } else if (phase === 'leave') {
+        result += `${tab.repeat(d)}</${fibInfo}>\n`;
+        d--;
+      } else {
+        d++;
+        result += `${tab.repeat(d)}<${fibInfo} />\n`;
+        d--;
+      }
+    }
+    return result;
+  };
 
+export const fiberTreeToXML3: Fiber => string =
+  fiberTreeToXMLWithGenerator(iterFiberTree);
+export const fiberTreeToXML3X: Fiber => string =
+  fiberTreeToXMLWithGenerator(iterFiberTreeX);
+export const fiberTreeToXML3Y: Fiber => string =
+  fiberTreeToXMLWithGenerator(iterFiberTreeY);
 
 // const fiberTreeToObject2 = (wipNode: Fiber, curNode: Fiber) => {
 //   if (wipNode === curNode) {
@@ -109,12 +112,15 @@ export const fiberTreeToXML3Y: Fiber => string = fiberTreeToXMLWithGenerator(ite
 export const getStackTrace = (depth: number): string => {
   // let obj = {stack: ''};
   // Error.captureStackTrace(obj, getStackTrace);
-  let stackStr = Error().stack
-    .split('\n')
+  let stackStr = Error()
+    .stack.split('\n')
     .slice(2, depth + 2)
     .map((frame, j) => {
       let num = j + 1 + ' ';
-      return num + frame.trim().slice(3).replace('/home/ubuntu/projects/react-fork/', '');
+      return (
+        num +
+        frame.trim().slice(3).replace('/home/ubuntu/projects/react-fork/', '')
+      );
     })
     // .map(({functionName, fileName}) => `${functionName}:: ${fileName}`)
     .join('\n');
@@ -124,4 +130,30 @@ export const getStackTrace = (depth: number): string => {
 
 export function dedent(str: string): string {
   return str.replace(/  +/gm, '');
+}
+
+export function wrapPromiseForSuspense<A>(promise: Promise<A>): () => A {
+  let status = 'pending';
+  let result: A;
+
+  promise.then(
+    value => {
+      status = 'resolved';
+      result = value;
+    },
+    reason => {
+      status = 'errored';
+      result = reason;
+    },
+  );
+
+  return () => {
+    if (status === 'pending') {
+      throw promise;
+    } else if (status === 'resolved') {
+      return result;
+    } else {
+      throw result;
+    }
+  };
 }
