@@ -47,7 +47,7 @@ export function updateContainer(
   container: OpaqueRoot,
   parentComponent: ?React$Component<any, any>
 ): Lane {
-  const current = container.current;
+  const current = container.current; // hostRootFiber
   const lane = requestUpdateLane(current); // lane = DefaultLane
 
   const update = createUpdate(lane);
