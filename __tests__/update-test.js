@@ -56,7 +56,7 @@ describe('update and re-render', () => {
     const root = ReactDOMClient.createRoot(containerForReactComponent);
     root.render(<App />);
     await __queue();
-    Scheduler.unstable_flushNumberOfYields(1);
+    Scheduler.unstable_flushNumberOfYields(0);
     console.log(document.body.innerHTML);
     await __queue();
     // console.log('=== /// === UPDATE === /// ===');
