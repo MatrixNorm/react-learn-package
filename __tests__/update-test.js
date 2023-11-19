@@ -96,41 +96,4 @@ describe('update and re-render', () => {
     console.log(document.body.innerHTML);
     console.log('end of test');
   });
-
-  it('t3 update useTransition', async () => {
-    function App() {
-      console.log('=== App ===');
-      const [isPending, startTransition] = React.useTransition();
-      const [count, setCount] = React.useState(0);
-
-      function incrementCount() {
-        startTransition(() => {
-          console.log('=== incrementCount ===');
-          setCount(prev => prev + 1);
-        });
-      }
-
-      return (
-        <div>
-          <button onClick={incrementCount}></button>
-          <div>{count}</div>
-        </div>
-      );
-    }
-
-    const root = ReactDOMClient.createRoot(containerForReactComponent);
-    root.render(<App />);
-    await __queue();
-    console.log('microtask queue is empty now');
-    Scheduler.unstable_flushNumberOfYields(1);
-    console.log(document.body.innerHTML);
-    await __queue();
-    console.log('=== /// === UPDATE === /// ===');
-    containerForReactComponent
-      .querySelector('button')
-      .dispatchEvent(new MouseEvent('click', {bubbles: true}));
-    await __queue();
-    console.log(document.body.innerHTML);
-    console.log('end of test');
-  });
 });
