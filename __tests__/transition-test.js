@@ -7,6 +7,14 @@ function __queue(label) {
   return new Promise(queueMicrotask);
 }
 
+function disableLogging() {
+  const CONSOLE_LOG = console.log;
+  console.log = () => {};
+  return () => {
+    console.log = CONSOLE_LOG;
+  };
+}
+
 describe('force concurrent render', () => {
   // ???
   let containerForReactComponent = null;
@@ -58,58 +66,56 @@ describe('force concurrent render', () => {
     return [App, actions];
   }
 
-  it('t0 just mount', async () => {
-    const [App, _] = zzz();
+  async function scheduleMount() {
+    const [App, actions] = zzz();
 
     const root = ReactDOMClient.createRoot(containerForReactComponent);
     root.render(<App />);
-    await __queue(1);
+    await __queue('<SCHEDULE MOUNT>');
+    console.log(document.body.innerHTML);
+    return actions;
+  }
+
+  async function executeMount() {
     Scheduler.unstable_flushUntilNextPaint();
     console.log(document.body.innerHTML);
-    await __queue(2);
+    await __queue('<AFTER MOUNT>');
+  }
+
+  it('t0 schedule mount', async () => {
+    await scheduleMount();
     console.log('end of test');
   });
 
-  it('t1 update', async () => {
-    const [App, action] = zzz();
+  it('t1 execute mount', async () => {
+    const enableLogging = disableLogging();
+    await scheduleMount();
+    enableLogging();
+    await executeMount();
+    console.log('end of test');
+  });
 
-    const CONSOLE_LOG = console.log;
-    console.log = () => {};
-
-    const root = ReactDOMClient.createRoot(containerForReactComponent);
-    root.render(<App />);
-    await __queue(1);
-    Scheduler.unstable_flushUntilNextPaint();
-    console.log(document.body.innerHTML);
-    await __queue(2);
-
-    console.log = CONSOLE_LOG;
-    action.incrementCount();
+  it('t2 enqueu updates & schedule render', async () => {
+    const enableLogging = disableLogging();
+    const actions = await scheduleMount();
+    await executeMount();
+    enableLogging();
+    console.log('ENQUEUE UPDATES');
+    actions.incrementCount();
+    console.log('SCHEDULE RENDER');
     await __queue(3);
-    // Scheduler.unstable_flushUntilNextPaint();
-    // await __queue(4);
-    // Scheduler.unstable_flushUntilNextPaint();
-    // await __queue(5);
     console.log(document.body.innerHTML);
     console.log('end of test');
   });
 
-  it('t2 update', async () => {
-    const [App, action] = zzz();
-
-    const CONSOLE_LOG = console.log;
-    console.log = () => {};
-
-    const root = ReactDOMClient.createRoot(containerForReactComponent);
-    root.render(<App />);
-    await __queue(1);
-    Scheduler.unstable_flushUntilNextPaint();
-    console.log(document.body.innerHTML);
-    await __queue(2);
-
-    action.incrementCount();
-    console.log = CONSOLE_LOG;
+  it('t3 render update', async () => {
+    const enableLogging = disableLogging();
+    const actions = await scheduleMount();
+    await executeMount();
+    actions.incrementCount();
     await __queue(3);
+    enableLogging();
+
     Scheduler.unstable_flushUntilNextPaint();
     await __queue(4);
     // Scheduler.unstable_flushUntilNextPaint();
